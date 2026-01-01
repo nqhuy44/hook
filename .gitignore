@@ -1,0 +1,54 @@
+# OS specific
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+
+# Go
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+# Project binary name
+hook-game
+
+# Go workspace
+go.work
+
+# Godot 4
+.godot/
+*.tmp
+*.log
+
+# Godot Export
+# export_presets.cfg is often ignored because it can contain sensitive paths or keys
+# excluding it for safety, though user can check it in if needed.
+export_presets.cfg
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Node (if any web/js stuff creeps in)
+node_modules/
+dist/

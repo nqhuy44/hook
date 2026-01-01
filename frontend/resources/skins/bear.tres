@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="CharacterSkin" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/resources/character_skin.gd" id="1_skin"]
+
+[resource]
+script = ExtResource("1_skin")
+name = "Griz"
+animal_type = "Bear"
+body_color = Color(0.36, 0.25, 0.2, 1)
+secondary_color = Color(0.77, 0.64, 0.52, 1)
+eye_color = Color(0, 0, 0, 1)
+scale_modifier = 1.2

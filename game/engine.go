@@ -41,11 +41,14 @@ func NewGame(players map[string]*PlayerInfo) *Game {
 			dc++
 		}
 	}
-	for i := rc; i < 5; i++ {
-		g.spawnBot(TeamRadiant)
-	}
-	for i := dc; i < 5; i++ {
-		g.spawnBot(TeamDire)
+	// Bot Logic: Only if <= 2 players
+	if len(players) <= 2 {
+		for i := rc; i < 5; i++ {
+			g.spawnBot(TeamRadiant)
+		}
+		for i := dc; i < 5; i++ {
+			g.spawnBot(TeamDire)
+		}
 	}
 	return g
 }
@@ -200,17 +203,11 @@ func (g *Game) Update() {
 			}
 		}
 
-		// Territory Damage
-		safeZone := RiverWidth/2 + 50.0
-		e.TerritoryBurn = false
-		// Only burn if NOT disabled (hooked/stunned)
-		if e.State != "dragged" && e.State != "stunned" {
-			if (e.Team == TeamRadiant && e.Pos.X > RiverX+safeZone) || (e.Team == TeamDire && e.Pos.X < RiverX-safeZone) {
-				e.HP -= (e.MaxHP * 0.15) * dt
-				e.TerritoryBurn = true
-				if e.HP <= 0 {
-					g.kill(e, nil)
-				}
+		// River Hazard (X: 720 to 880)
+		if e.Pos.X > 720 && e.Pos.X < 880 {
+			e.HP -= 50.0 * dt
+			if e.HP <= 0 {
+				g.kill(e, nil)
 			}
 		}
 
@@ -269,24 +266,25 @@ func (g *Game) Update() {
 			if distance(e.Pos, e.TargetPos) > 5.0 {
 				dir := normalize(sub(e.TargetPos, e.Pos))
 				newPos := add(e.Pos, mult(dir, e.Speed))
-				canCross := false
 
 				// CORE MOVEMENT FIX:
-				// 1. If we are ALREADY on the wrong side (TerritoryBurn), allow ALL movement (to escape or fight).
-				// 2. Otherwise prevent crossing into enemy side.
-				if e.TerritoryBurn {
-					canCross = true
-				} else {
-					if e.Team == TeamRadiant && newPos.X > (RiverX-RiverWidth/2) {
-						canCross = false
-					} else if e.Team == TeamDire && newPos.X < (RiverX+RiverWidth/2) {
-						canCross = false
-					} else {
-						canCross = true
-					}
+				// Strict Walls at 720 and 880 (River Banks)
+				// Unless Dragged (Hooked)
+				canMove := true
+				
+				// Left Bank (720)
+				if e.Pos.X <= 720 && newPos.X > 720 {
+					newPos.X = 720
+				} else if e.Pos.X > 720 && e.Pos.X < 880 {
+					// Inside River - Trapped
+					if newPos.X < 720 { newPos.X = 721 }
+					if newPos.X > 880 { newPos.X = 879 }
+				} else if e.Pos.X >= 880 && newPos.X < 880 {
+					// Right Bank (880)
+					newPos.X = 880
 				}
-
-				if canCross {
+				
+				if canMove {
 					e.Pos = newPos
 					e.Rotation = math.Atan2(dir.Y, dir.X)
 					// Boundary Clamp
@@ -526,6 +524,11 @@ func (g *Game) HandleInput(playerID, cmdType string, skillIdx int, x, y float64,
 	if cmdType == "move" {
 		h.TargetPos = Vector{X: x, Y: y}
 		h.State = "move"
+		h.TargetID = ""
+	}
+	if cmdType == "stop" {
+		h.TargetPos = h.Pos
+		h.State = "idle"
 		h.TargetID = ""
 	}
 	if cmdType == "attack" {

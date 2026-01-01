@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="HooK Godot Client"
-run/main_scene="uid://mainscene"
+run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="res://icon.svg"
 
@@ -22,11 +22,13 @@ SkinRegistry="*res://scripts/skin_registry.gd"
 
 [display]
 
-window/size/viewport_width=1600
-window/size/viewport_height=900
+window/size/viewport_width=1920
+window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
 
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
-renderer/rendering_method="mobile"
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

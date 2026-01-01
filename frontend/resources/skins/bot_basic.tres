@@ -1,9 +1,12 @@
-[gd_resource type="Resource" script_class="CharacterSkin" load_steps=3 format=3 uid="uid://bxmlr542hti3l"]
+[gd_resource type="Resource" script_class="CharacterSkin" load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/resources/charactor_skin.gd" id="1_8gb8g"]
-[ext_resource type="Texture2D" uid="uid://bebftcd7w37ib" path="res://assets/sprites/basic/basic.png" id="2_rl12k"]
+[ext_resource type="Script" path="res://scripts/resources/character_skin.gd" id="1_skin"]
 
 [resource]
-script = ExtResource("1_8gb8g")
-texture = ExtResource("2_rl12k")
-metadata/_custom_type_script = "uid://dnwimk6bdaoqo"
+script = ExtResource("1_skin")
+name = "Bamboo"
+animal_type = "Panda"
+body_color = Color(1, 1, 1, 1)
+secondary_color = Color(0, 0, 0, 1)
+eye_color = Color(0, 0, 0, 1)
+scale_modifier = 1.0

@@ -10,7 +10,8 @@
 -   **Skillshots**: "Meat Hook" (Q) with physics-based projectiles and reflection.
 -   **Combat**: 4 Skills (Hook, Rot, Leap, Dismember).
 -   **AI Bots**: Smart(ish) bots that hook, defend, and seek targets.
--   **Canvas Engine**: Custom HTML5 Canvas rendering engine (No external game libraries).
+-   **Godot Frontend**: Modern, high-performance client using Godot 4.5.1.
+-   **Canvas Engine**: *Legacy web client archived.*
 -   **Go Backend**: High-performance, concurrent server-authoritative logic.
 
 ---
@@ -34,11 +35,9 @@
     You should see: `Pudge Wars Server started on :8080`.
 
 3.  **Play**:
-    Open `http://localhost:8080` in your browser.
-    -   Enter a Name.
-    -   Click **Create Lobby**.
-    -   Select your **Animal Avatar**.
-    -   Click **Start Game**.
+    -   Open the `frontend` folder in **Godot 4.5.1**.
+    -   Press **Play** in the Godot Editor.
+    -   Connects to `ws://localhost:8080/ws` by default.
 
 ### Code Structure
 -   `main.go`: Entry point. Sets up HTTP/Static file serving.

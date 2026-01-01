@@ -90,8 +90,29 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 				conn.WriteJSON(map[string]string{"type": "error", "message": "Game Already Started"})
 				continue
 			}
+			
+			if len(r.Players) >= 20 {
+				r.mu.Unlock()
+				conn.WriteJSON(map[string]string{"type": "error", "message": "Room Full"})
+				continue
+			}
+			
+			// Auto-balance join
+			cRadiant, cDire := 0, 0
+			for _, p := range r.Players {
+				if p.Team == game.TeamRadiant {
+					cRadiant++
+				} else {
+					cDire++
+				}
+			}
+			joinTeam := game.TeamRadiant
+			if cRadiant > cDire {
+				joinTeam = game.TeamDire
+			}
+			
 			playerID = fmt.Sprintf("%d", time.Now().UnixNano())
-			r.Players[playerID] = &game.PlayerInfo{ID: playerID, Name: data.Name, Team: game.TeamDire, Conn: conn, Color: game.RandomColor(), AvatarID: data.AvatarID}
+			r.Players[playerID] = &game.PlayerInfo{ID: playerID, Name: data.Name, Team: joinTeam, Conn: conn, Color: game.RandomColor(), AvatarID: data.AvatarID}
 			r.mu.Unlock()
 
 			room = r
@@ -102,10 +123,23 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 			if room != nil {
 				room.mu.Lock()
 				if p, ok := room.Players[playerID]; ok {
+					// Count target team
+					targetTeam := game.TeamRadiant
 					if p.Team == game.TeamRadiant {
-						p.Team = game.TeamDire
+						targetTeam = game.TeamDire
+					}
+					
+					count := 0
+					for _, other := range room.Players {
+						if other.Team == targetTeam {
+							count++
+						}
+					}
+					
+					if count < 10 {
+						p.Team = targetTeam
 					} else {
-						p.Team = game.TeamRadiant
+						// Optional: Send error "Team Full"
 					}
 				}
 				room.mu.Unlock()
@@ -149,6 +183,32 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 				json.Unmarshal(msg.Payload, &input)
 				room.Game.HandleInput(playerID, input.Type, input.SkillIdx, input.X, input.Y, input.TargetID)
 			}
+			
+		case "chat":
+			if room != nil {
+				var data struct{ Message string `json:"message"` }
+				json.Unmarshal(msg.Payload, &data)
+				
+				room.mu.Lock()
+				senderName := "Unknown"
+				if p, ok := room.Players[playerID]; ok {
+					senderName = p.Name
+				}
+				room.mu.Unlock()
+				
+				// Broadcast chat
+				chatMsg, _ := json.Marshal(map[string]string{
+					"type": "chat",
+					"sender": senderName,
+					"message": data.Message,
+				})
+				
+				room.mu.Lock()
+				for _, p := range room.Players {
+					p.Conn.WriteMessage(websocket.TextMessage, chatMsg)
+				}
+				room.mu.Unlock()
+			}
 		}
 	}
 
@@ -174,10 +234,45 @@ func runGameLoop(r *Room) {
 	ticker := time.NewTicker(time.Second / game.TickRate)
 	defer ticker.Stop()
 	for range ticker.C {
-		// Game Ends check inside Update
 		r.Game.Update()
 		
 		state := r.Game.GetState()
+		
+		// Check Game Over
+		if r.Game.GameOver {
+			data, _ := json.Marshal(map[string]interface{}{"type": "game_over", "winner": r.Game.Winner})
+			r.mu.Lock()
+			for _, p := range r.Players {
+				p.Conn.WriteMessage(websocket.TextMessage, data)
+			}
+			r.mu.Unlock()
+			
+			// Wait 5 seconds buffer
+			time.Sleep(5 * time.Second)
+			
+			// Request Cleanup
+			log.Printf("Room %s Game Over. Cleaning up...", r.Code)
+			
+			// Cleanup Logic
+			roomsMu.Lock()
+			delete(rooms, r.Code)
+			roomsMu.Unlock()
+			
+			// Optional: Close all connections?
+			// ServeWS loop will detect room gone if we nil it or handle map removal?
+			// Actually ServeWS will continue unless connection closed.
+			// Let's rely on Client "Return to Menu" to close connection.
+			// Or force close here:
+			/*
+			r.mu.Lock()
+			for _, p := range r.Players {
+				p.Conn.Close()
+			}
+			r.mu.Unlock()
+			*/
+			return // Exit Loop
+		}
+		
 		data, _ := json.Marshal(map[string]interface{}{"type": "game_update", "state": state})
 		
 		r.mu.Lock()
@@ -196,7 +291,7 @@ func broadcastLobby(r *Room) {
 	for _, p := range r.Players {
 		list = append(list, p)
 	}
-	data, _ := json.Marshal(map[string]interface{}{"type": "lobby_update", "players": list, "status": r.Status})
+	data, _ := json.Marshal(map[string]interface{}{"type": "lobby_update", "players": list, "status": r.Status, "code": r.Code})
 	
 	for _, p := range r.Players {
 		p.Conn.WriteMessage(websocket.TextMessage, data)
