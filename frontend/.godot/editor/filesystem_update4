@@ -1,0 +1,13 @@
+res://scripts/entity.gd
+res://scripts/game.gd
+res://scripts/lobby.gd
+res://scenes/heroes/base.tscn
+res://scenes/heroes/base.gd
+res://scenes/game.tscn
+res://scripts/charactor_skin.gd
+res://resources/basic.tres
+res://scripts/heroes/player.gd
+res://resources/skins/basic.tres
+res://scripts/skin_registry.gd
+res://scenes/heroes/player.tscn
+res://resources/skins/bot_basic.tres
