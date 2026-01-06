@@ -28,6 +28,8 @@ Desktop.ini
 *.out
 # Project binary name
 hook-game
+hook
+server
 
 # Go workspace
 go.work
@@ -52,3 +54,12 @@ yarn-error.log*
 # Node (if any web/js stuff creeps in)
 node_modules/
 dist/
+
+# Web / Environment
+.env
+.env.local
+.cache/
+coverage/
+
+# Python
+__pycache__/
