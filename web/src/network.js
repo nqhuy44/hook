@@ -1,3 +1,6 @@
+import { GAME_CONFIG } from "./config.js";
+import { Logger } from "./utils/logger.js";
+
 export class NetworkManager {
   constructor() {
     this.socket = null;
@@ -11,39 +14,26 @@ export class NetworkManager {
   }
 
   connect() {
-    // Auto-detect protocol
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    let url = GAME_CONFIG.HOSTS.LOCAL;
 
-    // Determine host.
-    // If we are developing locally (file:// or localhost), we might want to hardcode or default to localhost:8080 if not otherwise specified.
-    // But the requirements say:
-    // Local: ws://localhost:8080/ws
-    // Production: wss://hook.firstdraft.sh/ws
-
-    let host = "localhost:8080";
+    // Auto-detect production
     if (
       window.location.hostname !== "localhost" &&
       window.location.hostname !== "127.0.0.1" &&
       window.location.protocol !== "file:"
     ) {
-      host = "hook.firstdraft.sh";
+      url = GAME_CONFIG.HOSTS.PROD;
     }
 
-    // If we are just opening index.html from file system, usually we want localhost.
-    if (window.location.protocol === "file:") {
-      // Force local dev environment defaults
-      this.connectToUrl("ws://localhost:8080/ws");
-    } else {
-      this.connectToUrl(`${protocol}//${host}/ws`);
+    if (window.location.protocol === "https:" && url.startsWith("ws:")) {
+      url = url.replace("ws:", "wss:");
     }
-  }
 
-  connectToUrl(url) {
-    console.log(`Connecting to ${url}...`);
+    Logger.info(`Connecting to ${url}...`);
     this.socket = new WebSocket(url);
 
     this.socket.onopen = (event) => {
-      console.log("socket open");
+      Logger.info("WebSocket Open");
       this.isConnected = true;
       if (this.onOpen) this.onOpen(event);
     };
@@ -51,30 +41,28 @@ export class NetworkManager {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        // Debug log
-        console.log("Received:", data);
-
+        Logger.debug("Received:", data);
         if (this.onMessage) this.onMessage(data);
       } catch (e) {
-        console.error("Error parsing message:", e, event.data);
+        Logger.error("Error parsing message:", e, event.data);
       }
     };
 
     this.socket.onclose = (event) => {
-      console.log("socket closed");
+      Logger.info("WebSocket Closed");
       this.isConnected = false;
       if (this.onClose) this.onClose(event);
     };
 
     this.socket.onerror = (event) => {
-      console.error("socket error", event);
+      Logger.error("WebSocket Error", event);
       if (this.onError) this.onError(event);
     };
   }
 
   send(type, payload) {
     if (!this.isConnected) {
-      console.warn("Cannot send message, socket not connected");
+      Logger.warn("Cannot send message, socket not connected");
       return;
     }
 

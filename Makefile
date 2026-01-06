@@ -13,5 +13,5 @@ backend:
 	go run main.go
 
 frontend:
-	@echo "Starting Web Frontend..."
-	cd web && python3 -m http.server 3000
+	@echo "Starting Vite Frontend..."
+	cd web && npm run dev
