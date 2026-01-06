@@ -6,75 +6,64 @@ export class InputManager {
     this.network = network;
     this.camera = camera;
 
+    // Local state
+    this.mouseScreen = { x: 0, y: 0 };
+    this.mouseWorld = { x: 0, y: 0 };
+
     this.setupListeners();
   }
 
   setupListeners() {
-    // Prevent context menu on right click
-    this.canvas.addEventListener("contextmenu", (e) => {
-      e.preventDefault();
-      this.handleRightClick(e);
+    // Track Mouse
+    window.addEventListener("mousemove", (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      this.mouseScreen.x = e.clientX - rect.left;
+      this.mouseScreen.y = e.clientY - rect.top;
+
+      // Update World Pos immediately
+      this.mouseWorld = this.camera.screenToWorld(
+        this.mouseScreen.x,
+        this.mouseScreen.y
+      );
     });
 
-    // Key listeners
+    // 1. Movement (Right Click)
+    this.canvas.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      this.handleMove();
+    });
+
+    // 2. Skills (Keyboard)
     window.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT") return; // Ignore if typing in chat
       this.handleKeyDown(e);
     });
   }
 
-  getGameCoordinates(clientX, clientY) {
-    // Canvas is full screen, so clientX/Y is relative to the viewport.
-    // We need to apply Camera offset to get World coordinates.
-    // WorldX = ClientX + CameraX - ScreenCenterX
-    // But for now, let's assume Camera is TOP-LEFT linked or Centered.
+  handleMove() {
+    const { x, y } = this.mouseWorld;
 
-    // Let's defer to Camera logic if we have it, or just pass simple coords
-    // and let Game/Camera class handle translation.
-
-    // BUT, we need to send World Coordinates to server.
-    const rect = this.canvas.getBoundingClientRect();
-    const mouseX = clientX - rect.left;
-    const mouseY = clientY - rect.top;
-
-    return this.camera.screenToWorld(mouseX, mouseY);
-  }
-
-  handleRightClick(e) {
-    const { x, y } = this.getGameCoordinates(e.clientX, e.clientY);
-
-    Logger.debug(`Input Move: ${x.toFixed(0)}, ${y.toFixed(0)}`);
+    Logger.debug(`[Input] Move -> ${x.toFixed(0)}, ${y.toFixed(0)}`);
 
     this.network.send("input", {
       type: "move",
       x: x,
       y: y,
+      targetID: null, // For unit targeting later
     });
   }
 
   handleKeyDown(e) {
     const key = e.key.toLowerCase();
-
     let skillIdx = -1;
-    if (key === "q") skillIdx = 0;
-    if (key === "w") skillIdx = 1;
+
+    if (key === "q") skillIdx = 0; // Hook
+    if (key === "w") skillIdx = 1; // Rot/Dismember
 
     if (skillIdx !== -1) {
-      // Needed: Mouse position for aiming?
-      // Usually skills like Hook shoot towards mouse.
-      // We might need to track mouse position constantly to send it with skill.
-      // For now, let's just send the keyDown event and maybe Mouse Position if we track it.
-      // Simplified: Just send skill signal, assume Server or next Packet uses current mouse?
-      // Or better: Pass current mouse pos.
-
-      // Let's implement mouse tracking quickly
-      if (!this.lastMousePos) {
-        this.lastMousePos = { x: 0, y: 0 };
-      }
-
-      const { x, y } = this.lastMousePos;
-
+      const { x, y } = this.mouseWorld;
       Logger.debug(
-        `Input Skill: ${skillIdx} at ${x.toFixed(0)}, ${y.toFixed(0)}`
+        `[Input] Skill ${skillIdx} -> ${x.toFixed(0)}, ${y.toFixed(0)}`
       );
 
       this.network.send("input", {
@@ -85,15 +74,9 @@ export class InputManager {
       });
     }
   }
-}
 
-// Attach generic mouse move tracker for aiming
-InputManager.prototype.setupMouseTracking = function () {
-  window.addEventListener("mousemove", (e) => {
-    const rect = this.canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const worldPos = this.camera.screenToWorld(mouseX, mouseY);
-    this.lastMousePos = worldPos;
-  });
-};
+  // Getter for looking direction etc.
+  getMouseWorld() {
+    return this.mouseWorld;
+  }
+}

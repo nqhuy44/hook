@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HooK - HUD</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Kurzgesagt Dark Palette */
+        --bg-panel: #2b2b36;
+        --bg-dark: #1e1e24;
+
+        --accent-yellow: #fdd835;
+        --accent-cyan: #4fc3f7;
+        --accent-red: #ef5350;
+        --accent-green: #66bb6a;
+        --text-main: #ffffff;
+
+        --radius-lg: 16px;
+        --radius-md: 12px;
+        --radius-pill: 50px;
+
+        /* Depth Shadow */
+        --shadow-block: 0 6px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+      }
+
+      body {
+        font-family: "Nunito", sans-serif;
+        background: transparent;
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      /* Preview BG - Remove in production */
+      .game-bg-preview {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: #282830;
+        background-image: radial-gradient(#3a3a45 1px, transparent 1px);
+        background-size: 40px 40px;
+        z-index: -1;
+      }
+
+      /* --- HUD CONTAINER --- */
+      .hud-layer {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        padding: 20px;
+      }
+
+      /* 1. SCOREBOARD (TOP CENTER) */
+      .scoreboard-container {
+        align-self: center;
+        display: flex;
+        align-items: center;
+        background-color: var(--bg-panel);
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+        border: 4px solid rgba(0, 0, 0, 0.2);
+        border-top: none;
+        overflow: hidden;
+        margin-top: -24px;
+        padding-top: 10px;
+        pointer-events: auto;
+      }
+      .score-team {
+        padding: 10px 25px;
+        font-size: 1.5rem;
+        font-weight: 900;
+        min-width: 80px;
+        text-align: center;
+      }
+      .sc-radiant {
+        color: var(--accent-green);
+        background: rgba(102, 187, 106, 0.1);
+      }
+      .sc-dire {
+        color: var(--accent-red);
+        background: rgba(239, 83, 80, 0.1);
+      }
+      .timer {
+        background-color: var(--bg-dark);
+        color: white;
+        padding: 8px 20px;
+        font-family: monospace;
+        font-size: 1.4rem;
+        font-weight: 700;
+        letter-spacing: 2px;
+        border-left: 2px solid rgba(255, 255, 255, 0.1);
+        border-right: 2px solid rgba(255, 255, 255, 0.1);
+      }
+
+      /* 2. KILL FEED (TOP RIGHT) */
+      .kill-feed {
+        position: absolute;
+        right: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        pointer-events: none;
+      }
+      .feed-item {
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-left: 4px solid transparent;
+        animation: slideIn 0.3s ease-out;
+      }
+      .feed-highlight {
+        color: var(--accent-yellow);
+      }
+      .feed-victim {
+        color: var(--accent-red);
+      }
+      .team-rad-kill {
+        border-left-color: var(--accent-green);
+      }
+      .team-dire-kill {
+        border-left-color: var(--accent-red);
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateX(50px);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+
+      /* 3. BOTTOM DASHBOARD (CENTERED) */
+      .bottom-dashboard {
+        width: 100%;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center; /* Center horizontally */
+        gap: 15px;
+        padding-bottom: 10px;
+        pointer-events: none;
+      }
+
+      /* --- NEW STATUS BAR COMBO --- */
+      .status-combo {
+        pointer-events: auto;
+        display: flex;
+        align-items: center;
+        background: var(--bg-panel);
+        padding: 6px;
+        /* Pill shape: tròn bên trái, bo góc bên phải */
+        border-radius: 50px 20px 20px 50px;
+        border: 4px solid rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-block);
+        position: relative;
+      }
+
+      .status-avatar {
+        width: 85px;
+        height: 85px;
+        background: var(--accent-yellow);
+        border-radius: 50%;
+        border: 4px solid var(--bg-panel);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2.8rem;
+        position: relative;
+        z-index: 2;
+        margin-right: -25px; /* Overlap bars slightly */
+        box-shadow: 3px 0 5px rgba(0, 0, 0, 0.2);
+      }
+
+      .status-bars {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+        padding-left: 30px; /* Space for avatar overlap */
+        padding-right: 12px;
+        min-width: 320px; /* Width of bars area */
+      }
+
+      .bar-wrapper {
+        position: relative;
+        background: #111;
+        border-radius: 10px;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+      }
+      .main-bar {
+        height: 30px;
+      } /* HP Taller */
+      .sub-bar {
+        height: 14px;
+      } /* Mana Shorter */
+
+      .bar-fill {
+        height: 100%;
+        transition: width 0.2s;
+      }
+      .hp {
+        background: var(--accent-green);
+        box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+      }
+      .mana {
+        background: var(--accent-cyan);
+        box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+      }
+
+      .bar-text {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 0.9rem;
+        font-weight: 800;
+        z-index: 2;
+      }
+
+      /* --- SKILLS ROW --- */
+      .skills-container {
+        pointer-events: auto;
+        display: flex;
+        gap: 15px;
+        padding: 10px 15px;
+        background: var(--bg-panel);
+        border-radius: 20px;
+        border: 4px solid rgba(0, 0, 0, 0.2);
+        box-shadow: var(--shadow-block);
+      }
+
+      .skill-slot {
+        width: 60px;
+        height: 60px;
+        background: #444;
+        border-radius: 12px;
+        position: relative;
+        border: 3px solid #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2rem;
+        cursor: pointer;
+      }
+      .skill-key {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        background: white;
+        color: black;
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 900;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+        z-index: 5;
+      }
+
+      .skill-ready {
+        border-color: var(--accent-cyan);
+        background: linear-gradient(135deg, #37474f, #263238);
+        box-shadow: 0 0 10px rgba(79, 195, 247, 0.3);
+      }
+      .skill-icon {
+        font-size: 1.8rem;
+        filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.5));
+      }
+      .skill-cooldown {
+        border-color: #555;
+        filter: grayscale(1);
+        opacity: 0.8;
+      }
+      .cd-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.6);
+        border-radius: 8px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: white;
+      }
+      .skill-no-mana {
+        border-color: var(--accent-cyan);
+        opacity: 0.5;
+        position: relative;
+      }
+      .no-mana-overlay {
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        font-size: 0.6rem;
+        color: var(--accent-cyan);
+        font-weight: 900;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-bg-preview"></div>
+
+    <div class="hud-layer">
+      <div class="scoreboard-container">
+        <div class="score-team sc-radiant">12</div>
+        <div class="timer">08:45</div>
+        <div class="score-team sc-dire">09</div>
+      </div>
+
+      <div class="kill-feed">
+        <div class="feed-item team-rad-kill">
+          <span class="feed-highlight">Psyduck</span>
+          <span style="font-size: 0.8rem">đã làm thịt</span>
+          <span class="feed-victim">Bot 1002</span>
+        </div>
+        <div class="feed-item team-dire-kill">
+          <span class="feed-highlight">Bot 1005</span>
+          <span style="font-size: 0.8rem">đã tự sát</span>
+        </div>
+      </div>
+
+      <div class="bottom-dashboard">
+        <div class="status-combo">
+          <div class="status-avatar"></div>
+          <div class="status-bars">
+            <div class="bar-wrapper main-bar">
+              <div class="bar-fill hp" style="width: 85%"></div>
+              <div class="bar-text">1650 / 2000</div>
+            </div>
+            <div class="bar-wrapper sub-bar">
+              <div class="bar-fill mana" style="width: 45%"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="skills-container">
+          <div class="skill-slot skill-ready">
+            <div class="skill-key">Q</div>
+            <div class="skill-icon">⚓</div>
+          </div>
+          <div class="skill-slot skill-ready" style="border-color: #66bb6a">
+            <div class="skill-key">W</div>
+            <div class="skill-icon">☢️</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

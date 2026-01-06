@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HooK - Game Field</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Kurzgesagt Dark Palette */
+        --bg-deep: #1e1e24;
+        --bg-floor: #282830;
+        --grid-line: rgba(255, 255, 255, 0.05);
+
+        --accent-yellow: #fdd835;
+        --accent-cyan: #4fc3f7; /* River Color */
+        --accent-red: #ef5350;
+        --accent-green: #66bb6a;
+
+        --text-main: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+      }
+
+      body {
+        font-family: "Nunito", sans-serif;
+        background-color: var(--bg-deep);
+        color: var(--text-main);
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* GAME VIEWPORT */
+      .game-viewport {
+        width: 100%;
+        height: 100%;
+        position: relative;
+        background-color: var(--bg-floor);
+        background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+          linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+        background-size: 80px 80px;
+        overflow: hidden;
+      }
+
+      /* --- THE RIVER (Vertical Flow) --- */
+      .river {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 180px;
+        height: 100%;
+        background-color: var(--accent-cyan);
+        border-left: 6px solid rgba(0, 0, 0, 0.1);
+        border-right: 6px solid rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+      }
+
+      /* Animated Waves Flowing Down */
+      .wave {
+        position: absolute;
+        left: 10%;
+        width: 80%;
+        height: 8px; /* Wider ripples */
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 4px;
+        animation: flow-vertical 3s linear infinite;
+        opacity: 0;
+      }
+      /* Different timing for variation */
+      .w1 {
+        animation-delay: 0s;
+        animation-duration: 4s;
+      }
+      .w2 {
+        animation-delay: 1.5s;
+        animation-duration: 5s;
+        height: 5px;
+      }
+      .w3 {
+        animation-delay: 3s;
+        animation-duration: 3.5s;
+      }
+
+      @keyframes flow-vertical {
+        0% {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        10% {
+          opacity: 0.8;
+        }
+        90% {
+          opacity: 0.8;
+        }
+        100% {
+          transform: translateY(800px);
+          opacity: 0;
+        } /* Move way down */
+      }
+
+      /* --- ENTITY & UI --- */
+      .entity {
+        position: absolute;
+        width: 60px;
+        height: 60px;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+
+      /* Body Parts */
+      .entity-body {
+        width: 100%;
+        height: 100%;
+        border-radius: 50%;
+        border: 4px solid #1a1a1a;
+        position: relative;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+      .hand {
+        position: absolute;
+        width: 20px;
+        height: 20px;
+        background: #1a1a1a;
+        border-radius: 50%;
+        top: 20px;
+        right: -10px;
+      }
+      .weapon {
+        position: absolute;
+        width: 12px;
+        height: 12px;
+        background: #555;
+        border-radius: 4px;
+        top: 24px;
+        right: -6px;
+        transform-origin: left center;
+      }
+
+      /* UI Container (Above head) */
+      /* Sử dụng flexbox để xếp chồng Name lên trên Bar dễ dàng */
+      .overhead-ui {
+        position: absolute;
+        bottom: 70px; /* Vị trí gốc trên đầu */
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px; /* Khoảng cách giữa tên và thanh máu */
+        z-index: 20;
+      }
+
+      .name-tag {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: white;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        white-space: nowrap;
+        background: rgba(0, 0, 0, 0.4);
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+
+      .hp-bar-container {
+        width: 50px;
+        height: 6px;
+        background: #333;
+        border-radius: 3px;
+        overflow: hidden;
+        border: 1px solid #000;
+      }
+      .hp-fill {
+        height: 100%;
+        background: var(--accent-green);
+        width: 100%;
+      }
+      .hp-fill.enemy {
+        background: var(--accent-red);
+      }
+
+      /* Specific Styles */
+      .hero-yellow .entity-body {
+        background-color: var(--accent-yellow);
+      }
+      .hero-red .entity-body {
+        background-color: var(--accent-red);
+      }
+
+      /* VFX Mockup */
+      .vfx-rot {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 140px;
+        height: 140px;
+        background: rgba(102, 187, 106, 0.2);
+        border-radius: 50%;
+        border: 2px dashed rgba(102, 187, 106, 0.5);
+        z-index: 1;
+        animation: rotSpin 4s linear infinite;
+        pointer-events: none;
+      }
+      @keyframes rotSpin {
+        100% {
+          transform: translate(-50%, -50%) rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-viewport">
+      <div class="river">
+        <div class="wave w1"></div>
+        <div class="wave w2"></div>
+        <div class="wave w3"></div>
+      </div>
+
+      <div class="entity hero-yellow" style="top: 50%; left: 30%">
+        <div class="overhead-ui">
+          <div class="name-tag">Psyduck (You)</div>
+          <div class="hp-bar-container"><div class="hp-fill"></div></div>
+        </div>
+
+        <div class="vfx-rot"></div>
+        <div class="entity-body"></div>
+        <div class="hand"></div>
+        <div class="weapon"></div>
+      </div>
+
+      <div
+        class="entity hero-red"
+        style="
+          top: 40%;
+          left: 75%;
+          transform: translate(-50%, -50%) rotate(180deg);
+        "
+      >
+        <div
+          class="overhead-ui"
+          style="
+            bottom: auto;
+            top: 70px;
+            transform: translateX(-50%) rotate(180deg);
+          "
+        >
+          <div class="name-tag">Bot 1001</div>
+          <div class="hp-bar-container">
+            <div class="hp-fill enemy" style="width: 60%"></div>
+          </div>
+        </div>
+
+        <div class="entity-body"></div>
+        <div class="hand"></div>
+        <div class="weapon"></div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HooK - Game Over</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Kurzgesagt Dark Palette */
+        --bg-overlay: rgba(30, 30, 36, 0.9);
+        --bg-panel: #2b2b36;
+        --bg-card: #1e1e24;
+
+        --accent-yellow: #fdd835;
+        --accent-cyan: #4fc3f7;
+        --accent-red: #ef5350;
+        --accent-green: #66bb6a;
+
+        --text-main: #ffffff;
+        --text-muted: #8a8a9b;
+
+        --radius-xl: 24px;
+        --radius-lg: 16px;
+        --radius-pill: 50px;
+        --radius-round: 50%;
+
+        --shadow-block: 0 8px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        user-select: none;
+      }
+
+      body {
+        font-family: "Nunito", sans-serif;
+        /* Background giả lập game */
+        background: url("image_5e3823.jpg") no-repeat center center/cover;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      /* OVERLAY */
+      .gameover-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: var(--bg-overlay);
+        backdrop-filter: blur(10px);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 100;
+        animation: fadeIn 0.5s ease-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      /* CONTENT CONTAINER */
+      .content-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 30px;
+        transform: translateY(-20px);
+      }
+
+      /* 1. WINNER TITLE */
+      .winner-title {
+        font-size: 5rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 4px;
+        text-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+        line-height: 1;
+        text-align: center;
+        animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      }
+      @keyframes popIn {
+        from {
+          transform: scale(0.5);
+          opacity: 0;
+        }
+        to {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      /* Dynamic Colors based on Winner */
+      .win-green {
+        color: var(--accent-green);
+      }
+      .win-red {
+        color: var(--accent-red);
+      }
+
+      .sub-title {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: rgba(255, 255, 255, 0.7);
+        letter-spacing: 2px;
+        margin-top: -10px;
+        text-transform: uppercase;
+      }
+
+      /* 2. SCORE BOARD */
+      .score-card {
+        background-color: var(--bg-panel);
+        padding: 30px 50px;
+        border-radius: var(--radius-xl);
+        border: 4px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        gap: 40px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+        position: relative;
+      }
+
+      .team-score-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 5px;
+      }
+      .ts-label {
+        font-size: 0.9rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+      .ts-val {
+        font-size: 4rem;
+        font-weight: 900;
+        line-height: 1;
+        padding: 10px 20px;
+        border-radius: 16px;
+        background: rgba(0, 0, 0, 0.2);
+        min-width: 120px;
+        text-align: center;
+      }
+
+      /* green Style */
+      .ts-green .ts-label {
+        color: var(--accent-green);
+      }
+      .ts-green .ts-val {
+        color: var(--accent-green);
+        border: 2px solid rgba(102, 187, 106, 0.3);
+      }
+
+      /* Red Style */
+      .ts-red .ts-label {
+        color: var(--accent-red);
+      }
+      .ts-red .ts-val {
+        color: var(--accent-red);
+        border: 2px solid rgba(239, 83, 80, 0.3);
+      }
+
+      .vs-badge {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: rgba(255, 255, 255, 0.2);
+        font-style: italic;
+      }
+
+      /* 3. MVP SECTION */
+      .mvp-section {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 10px 20px 10px 10px;
+        border-radius: 50px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        border: 2px solid rgba(255, 255, 255, 0.1);
+      }
+      .mvp-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: var(--accent-yellow);
+        border: 2px solid white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 1.5rem;
+      }
+      .mvp-info {
+        display: flex;
+        flex-direction: column;
+      }
+      .mvp-label {
+        font-size: 0.7rem;
+        color: var(--accent-cyan);
+        font-weight: 800;
+        letter-spacing: 1px;
+      }
+      .mvp-name {
+        font-weight: 700;
+        color: white;
+      }
+
+      /* 4. BUTTONS */
+      .action-row {
+        display: flex;
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .btn {
+        padding: 15px 40px;
+        border: none;
+        border-radius: var(--radius-pill);
+        font-size: 1.1rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: transform 0.1s;
+        box-shadow: var(--shadow-block);
+      }
+      .btn:active {
+        transform: translateY(4px);
+        box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-primary {
+        background-color: #fff;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="gameover-overlay">
+      <div class="content-box">
+        <div>
+          <div class="winner-title win-green">green<br />Victory</div>
+          <div class="sub-title" style="text-align: center">
+            The river is yours!
+          </div>
+        </div>
+
+        <div class="score-card">
+          <div class="team-score-box ts-green">
+            <div class="ts-label">green</div>
+            <div class="ts-val">30</div>
+          </div>
+
+          <div class="vs-badge">VS</div>
+
+          <div class="team-score-box ts-red">
+            <div class="ts-label">Red</div>
+            <div class="ts-val">24</div>
+          </div>
+        </div>
+
+        <div class="mvp-section">
+          <div class="mvp-avatar">👀</div>
+          <div class="mvp-info">
+            <div class="mvp-label">MVP OF THE MATCH</div>
+            <div class="mvp-name">Psyduck (15 Kills)</div>
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn btn-primary">Main Menu</button>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

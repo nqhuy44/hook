@@ -8,74 +8,66 @@ import { Camera } from "./camera.js";
 
 class Game {
   constructor() {
-    // App container setup if needed, but we focus on canvas
     this.canvas = document.getElementById("gameCanvas");
     this.ctx = this.canvas.getContext("2d", { alpha: false });
 
-    // Core Modules
+    // Modules
     this.textManager = new TextManager();
     this.network = new NetworkManager();
     this.camera = new Camera(this.canvas);
-    // InputManager needs to be reinstantiated or ensured it's correct
-    // Since we are overwriting files, we should ensure Input/Camera exist.
-    // I will assume Camera/Input from Phase 2 still exist and are compatible or I need to recreate them if I wiped them.
-    // Wait, the user request specificed generate code for 8 files, Camera/Input were not in the 8 files explicitly but needed for Main Logic.
-    // I will assume they are there. If not I should create them.
-    // Checking file structure: I am overwriting main.js.
-    // I must ensure InputManager and Camera are imported correctly.
-    if (typeof InputManager !== "undefined") {
-      this.input = new InputManager(this.canvas, this.network, this.camera);
-      this.input.setupMouseTracking();
-    } else {
-      // Fallback or Error if InputManager missing?
-      // Actually I didn't verify if I deleted them. I only overwrote specific files.
-      // web/src/input.js and web/src/camera.js should still be there from Phase 2.
-      // But I am switching to module imports.
-      // The previous phase used modules too.
-      // So `import { InputManager } from './input.js';` should work if file exists.
-    }
-
-    // Re-initialize input (Assuming InputManager export is correct)
     this.input = new InputManager(this.canvas, this.network, this.camera);
-    this.input.setupMouseTracking();
 
-    // State
-    this.connected = false;
-    this.connectionError = false;
+    // Game State
+    this.gameState = {
+      players: {}, // Map ID -> Player
+    };
+    this.myPlayerID = null;
 
     this.init();
   }
 
   init() {
-    // Set Title
     document.title = this.textManager.get("GAME_TITLE");
-    Logger.info("Game Initialized (Vite)");
 
     this.resize();
     window.addEventListener("resize", () => this.resize());
 
     this.setupNetwork();
 
-    // Start Loop
+    // Loop
     this.lastTime = 0;
     requestAnimationFrame((time) => this.loop(time));
   }
 
   setupNetwork() {
-    this.network.onOpen = () => {
-      this.connected = true;
-      this.connectionError = false;
-    };
+    const checkReady = setInterval(() => {
+      if (this.network) {
+        clearInterval(checkReady);
+        this.bindNetworkEvents();
+        this.network.connect();
+      }
+    }, 100);
+  }
 
-    this.network.onClose = () => {
-      this.connected = false;
-    };
+  bindNetworkEvents() {
+    this.network.onOpen = () => Logger.info("Connected to Server");
 
-    this.network.onError = () => {
-      this.connectionError = true;
+    this.network.onMessage = (data) => {
+      switch (data.type) {
+        case "room_joined":
+          this.myPlayerID = data.id;
+          Logger.info("Joined Room as", this.myPlayerID);
+          break;
+        case "game_update":
+          // Server sends { type: 'game_update', state: { players: [...] } }
+          // We just store it for rendering
+          if (data.state && data.state.Players) {
+            // Convert map/array to usable state
+            this.gameState.players = data.state.Players;
+          }
+          break;
+      }
     };
-
-    this.network.connect();
   }
 
   resize() {
@@ -89,78 +81,239 @@ class Game {
     this.lastTime = timestamp;
 
     this.update(dt);
-    this.draw();
+    this.draw(timestamp);
 
     requestAnimationFrame((time) => this.loop(time));
   }
 
   update(dt) {
-    // Game Logic here
+    // Client-side prediction or interpolation could go here
   }
 
-  draw() {
-    // 1. Clear Screen (Void Color)
-    this.ctx.fillStyle = GAME_CONFIG.COLORS.BG;
+  draw(time) {
+    // 1. Clear Void
+    this.ctx.fillStyle = GAME_CONFIG.COLORS.BG_DEEP;
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
     // 2. Camera Transform
     this.ctx.save();
     this.camera.apply(this.ctx);
 
-    // 3. Render Map
-    this.renderMap();
+    // 3. Render World
+    this.renderMap(time);
+    this.renderEntities();
 
-    // 4. Restore for UI
+    // 4. Input Debug (Mouse Cursor or Aim Line)
+    this.renderAiming();
+
     this.ctx.restore();
 
-    // 5. Render UI
-    this.renderUI();
+    // 5. HUD (Not implemented yet - Overlay)
   }
 
-  renderMap() {
-    this.ctx.fillStyle = GAME_CONFIG.COLORS.FLOOR;
-    this.ctx.fillRect(0, 0, GAME_CONFIG.MAP.WIDTH, GAME_CONFIG.MAP.HEIGHT);
+  renderMap(time) {
+    const { WIDTH, HEIGHT, RIVER_WIDTH } = GAME_CONFIG.MAP;
+    const { COLORS } = GAME_CONFIG;
 
-    this.ctx.strokeStyle = GAME_CONFIG.COLORS.GRID;
-    this.ctx.lineWidth = 1;
+    // Floor
+    this.ctx.fillStyle = COLORS.BG_FLOOR;
+    this.ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+    // Grid (Dots/Lines)
+    this.ctx.save();
     this.ctx.beginPath();
-    const gridSize = 100;
+    this.ctx.strokeStyle = COLORS.GRID_LINE;
+    this.ctx.lineWidth = 1;
 
-    for (let x = 0; x <= GAME_CONFIG.MAP.WIDTH; x += gridSize) {
+    // Draw grid lines every 80px (matching css bg-size)
+    const gridSize = 80;
+    for (let x = 0; x <= WIDTH; x += gridSize) {
       this.ctx.moveTo(x, 0);
-      this.ctx.lineTo(x, GAME_CONFIG.MAP.HEIGHT);
+      this.ctx.lineTo(x, HEIGHT);
     }
-
-    for (let y = 0; y <= GAME_CONFIG.MAP.HEIGHT; y += gridSize) {
+    for (let y = 0; y <= HEIGHT; y += gridSize) {
       this.ctx.moveTo(0, y);
-      this.ctx.lineTo(GAME_CONFIG.MAP.WIDTH, y);
+      this.ctx.lineTo(WIDTH, y);
     }
     this.ctx.stroke();
+    this.ctx.restore();
 
-    const riverWidth = 100;
-    const riverX = GAME_CONFIG.MAP.WIDTH / 2 - riverWidth / 2;
-    this.ctx.fillStyle = GAME_CONFIG.COLORS.RIVER;
-    this.ctx.fillRect(riverX, 0, riverWidth, GAME_CONFIG.MAP.HEIGHT);
+    // River
+    const riverX = WIDTH / 2 - RIVER_WIDTH / 2;
+
+    this.ctx.fillStyle = COLORS.ACCENT_CYAN;
+    this.ctx.fillRect(riverX, 0, RIVER_WIDTH, HEIGHT);
+
+    // River Borders
+    this.ctx.fillStyle = COLORS.RIVER_BORDER;
+    this.ctx.fillRect(riverX, 0, 6, HEIGHT); // Left border
+    this.ctx.fillRect(riverX + RIVER_WIDTH - 6, 0, 6, HEIGHT); // Right border
+
+    // River Waves (Simple Animation)
+    this.ctx.save();
+    // Clip to river area
+    this.ctx.beginPath();
+    this.ctx.rect(riverX, 0, RIVER_WIDTH, HEIGHT);
+    this.ctx.clip();
+
+    this.ctx.fillStyle = "rgba(255, 255, 255, 0.3)";
+    const waveSpeed = 0.05; // px/ms
+    const waveOffset = (time * waveSpeed) % 200;
+
+    // Draw generic wave bars moving down
+    for (let i = -200; i < HEIGHT; i += 200) {
+      const y = i + waveOffset;
+      // Draw a rounded rect for wave
+      this.drawRoundedRect(this.ctx, riverX + 20, y, RIVER_WIDTH - 40, 8, 4);
+      this.ctx.fill();
+
+      // Second offset wave
+      this.drawRoundedRect(
+        this.ctx,
+        riverX + 40,
+        y + 100,
+        RIVER_WIDTH - 80,
+        5,
+        2
+      );
+      this.ctx.fill();
+    }
+
+    this.ctx.restore();
   }
 
-  renderUI() {
-    if (!this.connected) {
-      this.ctx.fillStyle = GAME_CONFIG.COLORS.TEXT;
-      this.ctx.font = "30px Arial";
-      this.ctx.textAlign = "center";
+  renderEntities() {
+    const players = Object.values(this.gameState.players);
 
-      let textKey = "CONNECTING";
-      if (this.connectionError) textKey = "ERROR";
-      else if (!this.connected) textKey = "CONNECTING"; // Redundant
-
-      const message = this.textManager.get(textKey);
-      this.ctx.fillText(message, this.canvas.width / 2, this.canvas.height / 2);
-    } else {
-      this.ctx.fillStyle = "#00FF00";
-      this.ctx.font = "14px Arial";
-      this.ctx.textAlign = "left";
-      this.ctx.fillText(this.textManager.get("CONNECTED"), 10, 20);
+    for (const p of players) {
+      this.drawCharacter(p);
     }
+  }
+
+  drawCharacter(p) {
+    const { x, y, team, id, name } = p;
+    const color =
+      team === 1
+        ? GAME_CONFIG.COLORS.ACCENT_GREEN
+        : GAME_CONFIG.COLORS.ACCENT_RED; // 1=Radiant, 2=Dire
+    // Or using Colors based on ID/Index if distinct colors needed.
+
+    // Handle visual rotation (facing mouse) logic derived from server data or local if existing
+    // For now assume default down or simple logic
+    const radius = 30; // 60px diameter
+
+    this.ctx.save();
+    this.ctx.translate(x, y);
+
+    // Body Body
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    this.ctx.fillStyle = color;
+    this.ctx.fill();
+    this.ctx.lineWidth = 4;
+    this.ctx.strokeStyle = GAME_CONFIG.COLORS.ENTITY_BORDER;
+    this.ctx.stroke();
+
+    // Hands (Simple circles)
+    const handOffset = 25;
+    this.ctx.beginPath();
+    this.ctx.arc(handOffset, 15, 10, 0, Math.PI * 2); // Right hand
+    this.ctx.fillStyle = "#1a1a1a";
+    this.ctx.fill();
+
+    this.ctx.beginPath();
+    this.ctx.arc(-handOffset, 15, 10, 0, Math.PI * 2); // Left hand
+    this.ctx.fillStyle = "#1a1a1a";
+    this.ctx.fill();
+
+    // Weapon (Rect) on Right Hand
+    this.ctx.fillStyle = "#555";
+    this.ctx.fillRect(handOffset - 2, 5, 8, -25); // Vertical stick
+
+    this.ctx.restore();
+
+    // Overhead UI (Name + HP)
+    this.drawOverheadUI(p);
+  }
+
+  drawOverheadUI(p) {
+    const { x, y, name, hp, maxHP } = p;
+
+    this.ctx.save();
+    this.ctx.translate(x, y - 50); // Move above head
+
+    // Name Tag
+    this.ctx.fillStyle = "rgba(0, 0, 0, 0.4)";
+    this.ctx.font = "bold 12px Nunito, sans-serif";
+    const textMetrics = this.ctx.measureText(name || "Player");
+    const textWidth = textMetrics.width;
+    const padding = 6;
+
+    // Background Pill
+    this.drawRoundedRect(
+      this.ctx,
+      -textWidth / 2 - padding,
+      -20,
+      textWidth + padding * 2,
+      18,
+      9
+    );
+    this.ctx.fill();
+
+    // Text
+    this.ctx.fillStyle = "white";
+    this.ctx.textAlign = "center";
+    this.ctx.fillText(name || "Player", 0, -7);
+
+    // HP Bar Container
+    const barW = 50;
+    const barH = 6;
+    this.ctx.fillStyle = GAME_CONFIG.COLORS.HP_BAR_BG;
+    this.drawRoundedRect(this.ctx, -barW / 2, 2, barW, barH, 2);
+    this.ctx.fill();
+    this.ctx.stroke(); // Thin border
+
+    // HP Fill
+    const pct = Math.max(0, Math.min(1, (hp || 100) / (maxHP || 100)));
+    this.ctx.fillStyle =
+      p.team === 1
+        ? GAME_CONFIG.COLORS.ACCENT_GREEN
+        : GAME_CONFIG.COLORS.ACCENT_RED; // Dynamic Color? Or Green for all/self?
+    // Prompt says field.html logic: Enemy Red, Self/Ally Green.
+    // Need to check relationship with myPlayerID once implemented.
+    this.drawRoundedRect(this.ctx, -barW / 2, 2, barW * pct, barH, 2);
+    this.ctx.fill();
+
+    this.ctx.restore();
+  }
+
+  renderAiming() {
+    if (!this.myPlayerID || !this.gameState.players[this.myPlayerID]) return;
+
+    const ME = this.gameState.players[this.myPlayerID];
+    const mouse = this.input.getMouseWorld();
+
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.moveTo(ME.x, ME.y);
+    this.ctx.lineTo(mouse.x, mouse.y);
+    this.ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    this.ctx.setLineDash([5, 5]);
+    this.ctx.stroke();
+    this.ctx.restore();
+  }
+
+  // Helper
+  drawRoundedRect(ctx, x, y, w, h, r) {
+    if (w < 2 * r) r = w / 2;
+    if (h < 2 * r) r = h / 2;
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
   }
 }
 
